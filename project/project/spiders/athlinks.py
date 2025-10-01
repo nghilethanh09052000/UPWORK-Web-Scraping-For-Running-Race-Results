@@ -6,14 +6,24 @@ from datetime import datetime
 
 class AthlinksMasterSpider(scrapy.Spider):
     name = 'athlinks_master'
+    retries = 0
     custom_settings = {
-        # 'CONCURRENT_REQUESTS': 100,
-        # 'CONCURRENT_REQUESTS_PER_DOMAIN': 64,
+        
         'DOWNLOAD_DELAY': 0,
         'RETRY_ENABLED': True,
-        'LOG_FILE': f"logs/scrapy_log_athlinks_master.log",
-        #'LOG_LEVEL': 'INFO',
+        'LOG_FILE': f"logs/athlinks.log",
+        'CONCURRENT_REQUESTS': 100,
+        #'AUTOTHROTTLE_ENABLED' : True,
+        ##'AUTOTHROTTLE_START_DELAY' : 5,
+        #'AUTOTHROTTLE_MAX_DELAY' : 60,
+        #'AUTOTHROTTLE_TARGET_CONCURRENCY' : 1.0,
+        #'AUTOTHROTTLE_DEBUG' : True,
+        
+        'DOWNLOADER_MIDDLEWARES': {
+            #'project.middlewares.CustomProxyMiddleware': 543,
+        },
         "USER_AGENT": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0"
+    
     }
 
     def format_time(self, milliseconds):
@@ -58,7 +68,7 @@ class AthlinksMasterSpider(scrapy.Spider):
         master_id = response.meta['master_id']
 
         if not data.get('success'):
-            self.logger.error(f"Failed to get master event data for {master_id}")
+            self.logger.error(f"Failed f34538to get master event data for {master_id}")
             return
 
         result = data.get('result', {})
@@ -69,6 +79,68 @@ class AthlinksMasterSpider(scrapy.Spider):
             race_id = race.get('raceID')
             race_date_str = race.get('raceDate', '')
             race_date = datetime.fromisoformat(race_date_str)
+            
+            # if master_id == '20238' and str(race_date.year) != "2025": 
+            #     print(f"Year {race_date.year}... continue")
+            #     continue
+            
+            if master_id == '34538' and str(race_id) not in ["167062"]: 
+                print(f"Master Id master_id: {master_id} ... Race Id: {race_id} Continue...")
+                continue
+
+            if master_id == '34792' and str(race_id) not in ["470894", "829442"]: 
+                print(f"Master Id master_id: {master_id} ... Race Id: {race_id} Continue...")
+                continue
+
+            # Filter events by year for specific master events
+            if master_id == '34990' and race_date.year < 2022:  # BARMER Alsterlauf Hamburg 2022 onwards
+                print(f"Master Id {master_id} ... Year {race_date.year} before 2022, skipping...")
+                continue
+                
+            if master_id == '34440':  # Standard Chartered Hong Kong Marathon - All years (no filter)
+                pass
+                
+            if master_id == '4476' and race_date.year < 2010:  # Houston Marathon 2010 onwards
+                print(f"Master Id {master_id} ... Year {race_date.year} before 2010, skipping...")
+                continue
+                
+            if master_id == '3281' and race_date.year < 2010:  # Marine Corps Marathon 2010 onwards
+                print(f"Master Id {master_id} ... Year {race_date.year} before 2010, skipping...")
+                continue
+                
+            if master_id == '3241' and race_date.year < 2010:  # CIM 2010 onwards
+                print(f"Master Id {master_id} ... Year {race_date.year} before 2010, skipping...")
+                continue
+
+            # New event filters
+            if master_id == '34524' and race_date.year != 2017:  # Munich Half 2020 onwards
+                print(f"Master Id {master_id} ... Year {race_date.year} before 2020, skipping...")
+                continue
+                
+            if master_id == '34908' and race_date.year < 2025:  # Generali Genève Marathon 2025 only
+                print(f"Master Id {master_id} ... Year {race_date.year} before 2025, skipping...")
+                continue
+                
+            if master_id == '187582' and race_date.year < 2018:  # GENERALI Berlin Half Marathon 2018 onwards
+                print(f"Master Id {master_id} ... Year {race_date.year} before 2018, skipping...")
+                continue
+                
+            if master_id == '131958' and race_date.year < 2021:  # HASPA Marathon Hamburg 2021 onwards
+                print(f"Master Id {master_id} ... Year {race_date.year} before 2021, skipping...")
+                continue
+                
+            if master_id == '34631' and race_date.year < 2022:  # Hella Hamburg Halbmarathon 2022 onwards
+                print(f"Master Id {master_id} ... Year {race_date.year} before 2022, skipping...")
+                continue
+            
+            if master_id == '34455' and race_date.year != 2025:  # Sydney Marathon 2025 only
+                print(f"Master Id {master_id} ... Year {race_date.year} before 2025, skipping...")
+                continue
+            
+            if master_id == '34504' and race_date.year not in [2024]: # Athen Marathon
+                print(f"Master Id {master_id} ... Year {race_date.year} must be on the list 2016, 2017, 2018, 2020, 2021, 2022, 2023, 2024 , skipping...")
+                continue
+
             if race_date.year < 2005:
                 continue
 
@@ -77,20 +149,7 @@ class AthlinksMasterSpider(scrapy.Spider):
                 'race_name': race.get('raceName', ''),
                 'race_date': race.get('raceDate', '')
             }
-
-            #if master_id == '103050' and str(race_id) not in ['122794', '428894', '534640']: continue
-            # if master_id == '34444' and str(race_id) not in ['170851', '433854', '632726', '881523', '961505', '991321', '1013816', '1050362', '1088467']: continue
-            # if master_id == '34492' and str(race_id) not in ['72638', '134368', '240072', '323915']: continue
-            #if master_id == '34518' and str(race_id) not in ['603542']: continue
-            # if master_id == '34535' and str(race_id) not in ['995603']: continue
-            # if master_id == '34641' and str(race_id) not in ['1087489']: continue
-            #if master_id == '95020' and str(race_id) not in ['48295']: continue
-
-
-            if master_id == '103050' and str(race_id) not in ['122794']: continue
-            # if master_id == '103050' and str(race_id) not in ['428894']: continue
-            # if master_id == '103050' and str(race_id) not in ['534640']: continue
-
+            
             for course in race.get('eventCourses', []):
                 result_count = course.get('resultCount', 0)
                 if result_count == 0:
@@ -151,17 +210,6 @@ class AthlinksMasterSpider(scrapy.Spider):
 
             self.logger.info(f'Url Crawling {response.url} with length: {len(interval_results)}')
 
-            if not interval_results:
-                self.logger.warning(f"Empty intervalResults, retrying: {response.url}")
-                yield scrapy.Request(
-                    url=response.url,
-                    callback=self.parse_race_results,
-                    meta=response.meta,
-                    dont_filter=True,
-                )
-                return
-
-
             for result in interval_results:
                 bib = result.get('bib', '')
                 entry_id = result.get('entryId', 0)
@@ -190,9 +238,9 @@ class AthlinksMasterSpider(scrapy.Spider):
             }
             yield from self.fetch_course_results(course_data, offset=next_offset)
     
-
     def parse_individual_result(self, response):
         data = json.loads(response.text)
+     
         if not data:
             self.logger.warning(f"No data received for URL: {response.url}. Retrying...")
             yield scrapy.Request(
@@ -217,17 +265,29 @@ class AthlinksMasterSpider(scrapy.Spider):
 
         if data.get('intervals'):
             for interval in data['intervals']:
-                if interval.get('brackets'):
-                    for bracket in interval['brackets']:
-                        if bracket.get('bracketType') == 'OVERALL':
-                            overall_rank = bracket.get('rank')
-                            total_athletes = bracket.get('totalAthletes')
-                        elif bracket.get('bracketType') == 'GENDER':
-                            gender_rank = bracket.get('rank')
-                            gender_total = bracket.get('totalAthletes')
-                        else: 
-                            age_rank = bracket.get('rank')
-                            age_total = bracket.get('totalAthletes')
+                brackets = interval.get('brackets', [])
+                if len(brackets) >= 3:
+                    # Assuming fixed order: 0 = OVERALL, 1 = GENDER, 2 = AGE
+                    overall_rank = brackets[0].get('rank')
+                    total_athletes = brackets[0].get('totalAthletes')
+
+                    gender_rank = brackets[1].get('rank')
+                    gender_total = brackets[1].get('totalAthletes')
+
+                    age_rank = brackets[2].get('rank')
+                    age_total = brackets[2].get('totalAthletes')
+                    
+                # if interval.get('brackets'):
+                #     for bracket in interval['brackets']:
+                #         if bracket.get('bracketType') == 'OVERALL':
+                #             overall_rank = bracket.get('rank')
+                #             total_athletes = bracket.get('totalAthletes')
+                #         elif bracket.get('bracketType') == 'GENDER':
+                #             gender_rank = bracket.get('rank')
+                #             gender_total = bracket.get('totalAthletes')
+                #         else: 
+                #             age_rank = bracket.get('rank')
+                #             age_total = bracket.get('totalAthletes')
 
         yield {
             'summary': {

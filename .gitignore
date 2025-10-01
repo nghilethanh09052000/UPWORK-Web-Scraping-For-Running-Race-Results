@@ -10,3 +10,4 @@ download
 /project/logs
 *.json
 /project/logs
+__pycache__

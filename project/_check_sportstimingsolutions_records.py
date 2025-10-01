@@ -11,7 +11,7 @@ def extract_total_rank(rank_str):
         return 0
 
 def process_race_file(file_path):
-    """Process a single race JSON file and return total counts"""
+    """Process a single race JSON file and return counts by distance category"""
     try:
         with open(file_path, 'r') as f:
             data = json.load(f)
@@ -20,25 +20,33 @@ def process_race_file(file_path):
         race_name = data.get('race_name', '')
         race_date = data.get('race_date', '')
         
-        # Collect unique totals
-        unique_totals = set()
+        # Group records by distance category
+        distance_stats = defaultdict(lambda: {
+            'total_records': 0,
+            'expected_total': 0,
+            'unique_totals': set()
+        })
         
         # Process each record
         for record in data.get('data', []):
+            distance_category = record.get('distance_category', 'Unknown')
             rank_overall = record.get('rank_overall', '')
+            
+            distance_stats[distance_category]['total_records'] += 1
+            
             if rank_overall:
                 total = extract_total_rank(rank_overall)
                 if total > 0:
-                    unique_totals.add(total)
+                    distance_stats[distance_category]['unique_totals'].add(total)
         
-        # Calculate expected total by summing all unique totals
-        expected_total = sum(unique_totals)
+        # Calculate expected totals for each distance category
+        for category in distance_stats:
+            distance_stats[category]['expected_total'] = sum(distance_stats[category]['unique_totals'])
         
         return {
             'race_name': race_name,
             'race_date': race_date,
-            'total_records': len(data.get('data', [])),
-            'expected_total': expected_total
+            'distance_stats': distance_stats
         }
     except Exception as e:
         print(f"Error processing {file_path}: {str(e)}")
@@ -52,11 +60,11 @@ def calculate_missing_percentage(record_count, expected_total):
 
 def main():
     # Directory containing race data
-    data_dir = "data_check"
+    data_dir = "check_data_sporttimingsolutions"
     
     # Prepare CSV output
-    output_file = "race_records_check.csv"
-    fieldnames = ['race_name', 'race_date', 'total_records', 'expected_total', 'is_matching', 'missing_percentage']
+    output_file = "check_data_sporttimingsolutions.csv"
+    fieldnames = ['race_name', 'race_date', 'distance_category', 'total_records', 'expected_total', 'is_matching', 'missing_percentage']
     
     # Store all results for sorting
     all_results = []
@@ -76,26 +84,34 @@ def main():
             result = process_race_file(file_path)
             
             if result:
-                is_matching = result['total_records'] == result['expected_total']
-                missing_percentage = calculate_missing_percentage(result['total_records'], result['expected_total'])
-                
-                all_results.append({
-                    'race_name': result['race_name'],
-                    'race_date': result['race_date'],
-                    'total_records': result['total_records'],
-                    'expected_total': result['expected_total'],
-                    'is_matching': 'Yes' if is_matching else 'No',
-                    'missing_percentage': f"{missing_percentage}%"
-                })
+                # Process each distance category
+                for distance_category, stats in result['distance_stats'].items():
+                    is_matching = stats['total_records'] == stats['expected_total']
+                    missing_percentage = calculate_missing_percentage(
+                        stats['total_records'], 
+                        stats['expected_total']
+                    )
+                    
+                    all_results.append({
+                        'race_name': result['race_name'],
+                        'race_date': result['race_date'],
+                        'distance_category': distance_category,
+                        'total_records': stats['total_records'],
+                        'expected_total': stats['expected_total'],
+                        'is_matching': 'Yes' if is_matching else 'No',
+                        'missing_percentage': f"{missing_percentage}%"
+                    })
     
-    # Sort results by race name and date
-    all_results.sort(key=lambda x: (x['race_name'], x['race_date']))
+    # Sort results by race name, date, and distance category
+    all_results.sort(key=lambda x: (x['race_name'], x['race_date'], x['distance_category']))
     
     # Write sorted results to CSV
     with open(output_file, 'w', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(all_results)
+        
+    print(f"Results written to {output_file}")
 
 if __name__ == "__main__":
     main() 

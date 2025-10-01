@@ -18,7 +18,7 @@ def count_runners_in_json(file_path):
 
 def process_local_data():
     """Process all JSON files in the data directory"""
-    data_dir = Path(__file__).parent / "data_20250512"
+    data_dir = Path(__file__).parent / "check_data_athlinks"
     if not data_dir.exists():
         print(f"Error: {data_dir} not found")
         return {}
@@ -143,7 +143,7 @@ def compare_counts():
     print(f"Difference: {total_local - total_api}")
 
     # Export results to CSV
-    csv_path = Path(__file__).parent / "comparison_results.csv"
+    csv_path = Path(__file__).parent / "check_data_athlinks.csv"
     with open(csv_path, mode='w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=["master_event_id", "event_id", "local_count", "api_count", "percentage_missing", "missing"])
         writer.writeheader()

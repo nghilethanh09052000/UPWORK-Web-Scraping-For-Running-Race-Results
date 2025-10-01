@@ -28,9 +28,16 @@ run_event() {
 # Function to run all events
 run_all_events() {
     run_event "Ladakh Marathon" 2013 2019
-    run_event "Hyderabad Marathon" 2021 2022
+    run_event "Hyderabad Marathon" 2016 2021
     run_event "New Delhi Marathon" 2018 2019
     run_event "SKF Goa Marathon" 2021 2023
+    run_event "Standard Chartered Mumbai Marathon" 2016 2017
+    run_event "Airtel Delhi Half Marathon" 2015 2018
+    run_event "Shriram Properties Bengaluru Marathon" 2015 2018
+    
+    # New events added
+    run_event "Tuffman Half Marathon Delhi" 2025 2025
+    run_event "Tuffman Gurugram Half Marathon" 2023 2025
 }
 
 # Main script
@@ -47,7 +54,7 @@ else
             run_event "Ladakh Marathon" 2013 2019
             ;;
         "hyderabad")
-            run_event "Hyderabad Marathon" 2021 2022
+            run_event "Hyderabad Marathon" 2016 2021
             ;;
         "delhi")
             run_event "New Delhi Marathon" 2018 2019
@@ -55,8 +62,26 @@ else
         "goa")
             run_event "SKF" 2021 2023
             ;;
+        "scmb")
+            run_event "Standard Chartered Mumbai Marathon" 2016 2017
+            ;;
+        "spbm")
+            run_event "Shriram Properties Bengaluru Marathon" 2015 2018
+            ;;
+        "adhm")
+            run_event "Airtel Delhi Half Marathon" 2015 2018
+            ;;
+        "tuffman_delhi")
+            run_event "Tuffman Half Marathon Delhi" 2025 2025
+            ;;
+        "tuffman_gurugram")
+            run_event "Tuffman Gurugram Half Marathon" 2023 2025
+            ;;
+        "nmdc_hyderabad")
+            run_event "NMDC HYDERABAD MARATHON 2025" 2025 2025
+            ;;
         *)
-            echo "Invalid event name. Use: ladakh, hyderabad, delhi, or goa"
+            echo "Invalid event name. Use: ladakh, hyderabad, delhi, goa, scmb, spbm, adhm, tuffman_delhi, or tuffman_gurugram"
             exit 1
             ;;
     esac

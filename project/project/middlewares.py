@@ -40,16 +40,27 @@ class TooManyRequestsRetryMiddleware(RetryMiddleware):
 
 
 class CustomProxyMiddleware(object):
-
-    def __init__(self):
+    def __init__(self, proxy_start=0, proxy_end=50):
+        # Convert proxy range to integers
+        self.proxy_start = int(proxy_start)
+        self.proxy_end = int(proxy_end)
         # Load proxies from the external file
-        self.proxy_list = self.load_proxies()
+        self.proxy_list = self.load_proxies()[self.proxy_start:self.proxy_end]
+        print(f"Initialized proxy middleware with range {self.proxy_start}-{self.proxy_end}, loaded {len(self.proxy_list)} proxies")
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        # Get proxy range from spider settings and convert to integers
+        proxy_start = int(crawler.settings.get('PROXY_START', 0))
+        proxy_end = int(crawler.settings.get('PROXY_END', 50))
+        return cls(proxy_start, proxy_end)
 
     def process_request(self, request, spider):
         # Randomly select a proxy from the list
         if "proxy" not in request.meta:
-            print('Using proxy:', self.get_proxy())  # Optional: for debugging
-            request.meta["proxy"] = self.get_proxy()
+            proxy = self.get_proxy()
+            print(f'Using proxy for {spider.name}: {proxy}')  # Optional: for debugging
+            request.meta["proxy"] = proxy
 
     def load_proxies(self):
         # Load the proxies from the .txt file
@@ -117,7 +128,7 @@ class ProjectSpiderMiddleware:
     def process_start_requests(self, start_requests, spider):
         # Called with the start requests of the spider, and works
         # similarly to the process_spider_output() method, except
-        # that it doesn’t have a response associated.
+        # that it doesn't have a response associated.
 
         # Must return only requests (not items).
         for r in start_requests:

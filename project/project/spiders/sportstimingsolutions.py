@@ -7,9 +7,14 @@ from datetime import datetime
 class SportsTimingSolutionsSpider(scrapy.Spider):
     name = 'sportstimingsolutions'
     custom_settings = {
+        'AUTOTHROTTLE_ENABLED': False,
+        'CONCURRENT_REQUESTS': 200,
         'RETRY_ENABLED': True,
         'LOG_FILE': f"logs/sportstimingsolutions.log",
-        'USER_AGENT': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0"
+        'USER_AGENT': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0",
+        'DOWNLOADER_MIDDLEWARES': {
+            #'project.middlewares.CustomProxyMiddleware': 543,
+        }
     }
 
     def __init__(self, *args, **kwargs):
@@ -19,26 +24,46 @@ class SportsTimingSolutionsSpider(scrapy.Spider):
             'Ladakh Marathon': list(range(2013, 2024)),  # 2013-2023
             'Hyderabad Marathon': list(range(2011, 2024)),  # 2011-2023
             'New Delhi Marathon': list(range(2016, 2024)),  # 2016-2023
-            'SKF Goa Marathon': list(range(2021, 2024))  # 2021-2023
+            'SKF Goa Marathon': list(range(2021, 2024)),  # 2021-2023
+            # New events added
+            'Hiranandani Thane Half Marathon 2025': [2025],
+            'Apla Pune Marathon': list(range(2020, 2026)),  # 2020-2025
+            'Rotary Valsad City Marathon': list(range(2023, 2026)),  # 2023-2025
+            'Ekal Run Surat': list(range(2024, 2026)),  # 2024-2025
+            'Bajaj Allianz Pune Half Marathon 2022': [2022],
+            'Bajaj Allianz Pune Half Marathon 2023': [2023],
+            'Bajaj Allianz Pune Half Marathon 2024': [2024],
+            'Bajaj Allianz Pune Half Marathon 2025': [2025],
+            'Disha Habitat Bengaluru Runners Jatre': list(range(2024, 2026)),  # 2024-2025
+            'Mumbai Marathon': [2020],
+            'TCS World 10K Bengaluru': [2025],
+            'Satara Hill Half Marathon': [2023],
+            'Vadodara Marathon': list(range(2023, 2026)),  # 2023-2025
+            'Bengaluru Marathon': [2019, 2021, 2023, 2024],
+            # Additional new events
+            'Indian Navy Half Marathon': list(range(2020, 2026)),  # 2020-2025
+            'Chandigarh Fast Marathon': list(range(2024, 2026)),  # 2024-2025
+            'Vasai Virar Municipal Corporation Marathon': list(range(2024, 2026)),  # 2024-2025
+            'Kashmir Marathon': [2024],
+            'SBI Patna Marathon Reloaded': [2024]
         }
         self.current_event = None
         self.current_year = None
+        # Get bib range parameters
+        self.start_bib = int(getattr(self, 'start_bib', 1000))
+        self.end_bib = int(getattr(self, 'end_bib', 100001))
 
     def start_requests(self):
-        # Get event name and year from command line arguments
         self.event_name = getattr(self, 'event_name', None)
         self.year = getattr(self, 'year', None)
         
         if self.event_name and self.year:
-            # Single event mode
             self.logger.info(f"Starting spider for event: {self.event_name}, year: {self.year}")
+            self.logger.info(f"Bib range: {self.start_bib} to {self.end_bib}")
             yield self.make_event_request(self.event_name, self.year)
         else:
-            # Multiple events mode
-            for event_name, years in self.events.items():
-                for year in years:
-                    self.logger.info(f"Starting spider for event: {event_name}, year: {year}")
-                    yield self.make_event_request(event_name, year)
+            self.logger.error("Event name and year are required")
+            return
 
     def make_event_request(self, event_name, year):
         search_url = f"https://sportstimingsolutions.in/frontend/api/event-search?name={event_name.replace(' ', '+')}&year={year}"
@@ -84,12 +109,9 @@ class SportsTimingSolutionsSpider(scrapy.Spider):
 
                 self.logger.info(f"Found event ID: {event_id}")
 
-                # Start bib number search
-                for bib_no in range(1000, 10001):
-                    if str(bib_no) in self.processed_bibs:
-                        continue
-
-                    bib_url = f"https://sportstimingsolutions.in/frontend/api/event/bib/result?event_id={event_id}&bibNo={bib_no}"
+                # Start fetching bibs from event-bibs API using bib number range
+                for bib_no in range(self.start_bib, self.end_bib):
+                    bibs_url = f"https://sportstimingsolutions.in/frontend/api/event-bibs?event_id={event_id}&term={bib_no}"
                     headers = {
                         'accept': 'application/json, text/plain, */*',
                         'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0',
@@ -97,9 +119,9 @@ class SportsTimingSolutionsSpider(scrapy.Spider):
                     }
 
                     yield scrapy.Request(
-                        url=bib_url,
+                        url=bibs_url,
                         headers=headers,
-                        callback=self.parse_bib_result,
+                        callback=self.parse_event_bibs,
                         meta={
                             'event_id': event_id,
                             'event_name': event.get('name', response.meta['event_name']),
@@ -111,6 +133,57 @@ class SportsTimingSolutionsSpider(scrapy.Spider):
 
         except Exception as e:
             self.logger.error(f"Error in parse_event_search: {str(e)}")
+
+    def parse_event_bibs(self, response):
+        try:
+            # Decode base64 response
+            encoded_data = response.json().get("data")
+            if not encoded_data:
+                self.logger.info(f"No data found for bib: {response.meta['bib_no']}")
+                return
+
+            decoded_bytes = base64.b64decode(encoded_data)
+            decoded_json = json.loads(decoded_bytes)
+            
+            participants = decoded_json.get('participants', [])
+            if not participants:
+                self.logger.info(f"No participants found for bib: {response.meta['bib_no']}")
+                return
+
+            self.logger.info(f"Found {len(participants)} participants for bib: {response.meta['bib_no']}")
+
+            # Process each participant's bib
+            for participant in participants:
+                bib_no = participant.get('bibno')
+                if not bib_no or str(bib_no) in self.processed_bibs:
+                    continue
+
+                self.processed_bibs.add(str(bib_no))
+                self.logger.info(f"Processing bib: {bib_no}")
+
+                # Request individual bib results
+                bib_url = f"https://sportstimingsolutions.in/frontend/api/event/bib/result?event_id={response.meta['event_id']}&bibNo={bib_no}"
+                headers = {
+                    'accept': 'application/json, text/plain, */*',
+                    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0',
+                    'referer': 'https://sportstimingsolutions.in/'
+                }
+
+                yield scrapy.Request(
+                    url=bib_url,
+                    headers=headers,
+                    callback=self.parse_bib_result,
+                    meta={
+                        'event_id': response.meta['event_id'],
+                        'event_name': response.meta['event_name'],
+                        'year': response.meta['year'],
+                        'bib_no': str(bib_no)
+                    },
+                    dont_filter=True
+                )
+
+        except Exception as e:
+            self.logger.error(f"Error in parse_event_bibs: {str(e)}")
 
     def parse_bib_result(self, response):
         try:
@@ -169,7 +242,6 @@ class SportsTimingSolutionsSpider(scrapy.Spider):
                 if interval.get('interval_name') == 'Full Course':
                     chip_pace = interval.get('chip_pace', '')
 
-            
             result = {
                 'summary': {
                     'event_id': event.get('id'),

@@ -7,11 +7,18 @@ import re
 class IfinishSpider(scrapy.Spider):
     name = 'ifinish'
     custom_settings = {
-        # 'CONCURRENT_REQUESTS': 50,
-        # 'CONCURRENT_REQUESTS_PER_DOMAIN': 32,
-        # 'DOWNLOAD_DELAY': 0,
+        'CONCURRENT_REQUESTS': 50,
+        'DOWNLOAD_DELAY': 0,
+        #'AUTOTHROTTLE_ENABLED' : True,
+        # 'AUTOTHROTTLE_START_DELAY' : 5,
+        # 'AUTOTHROTTLE_MAX_DELAY' : 60,
+        # 'AUTOTHROTTLE_TARGET_CONCURRENCY' : 1.0,
+        'AUTOTHROTTLE_DEBUG' : True,
         'RETRY_ENABLED': True,
         'LOG_FILE': f"logs/ifinish.log",
+        'DOWNLOADER_MIDDLEWARES': {
+            #'project.middlewares.CustomProxyMiddleware': 543,
+        },
         'USER_AGENT': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0"
     }
 
@@ -22,7 +29,11 @@ class IfinishSpider(scrapy.Spider):
             'Ladakh Marathon': list(range(2013, 2020)),  # 2013-2019
             'Hyderabad Marathon': list(range(2011, 2024)),  # 2011-2023
             'New Delhi Marathon': list(range(2016, 2020)),  # 2016-2019
-            'SKF Goa Marathon': list(range(2021, 2024))  # 2021-2023
+            'SKF Goa Marathon': list(range(2021, 2024)),  # 2021-2023
+            # New events added
+            'Tuffman Half Marathon Delhi': list(range(2025, 2026)),  # 2024-2025
+            'Tuffman Gurugram Half Marathon': list(range(2023, 2026)),  # 2023-2025
+            'NMDC HYDERABAD MARATHON 2025': list(range(2025, 2025)),  # 2025-2025
         }
         self.current_event = None
         self.current_year = None
@@ -158,7 +169,10 @@ class IfinishSpider(scrapy.Spider):
                 self.logger.info(f"Processing category: {category_name}")
                 
                 # Process top results
+                if isinstance(category.get('topResults', []), dict): continue
+                
                 for top_result in category.get('topResults', []):
+                                        
                     gender = 'Male' if 'Male' in top_result.get('title', '') else 'Female'
                     
                     for result in top_result.get('results', []):
@@ -171,9 +185,15 @@ class IfinishSpider(scrapy.Spider):
                         prefix_match = re.match(r'^([A-Z])(?:-)?', str(bib))
                         if prefix_match and prefix_match.group(1):
                             prefix = prefix_match.group(1)
-                            string_patterns.add(prefix)  # Add without hyphen
-                            string_patterns.add(f"{prefix}-")  # Add with hyphen
-                            self.logger.info(f"Found bib prefix patterns: {prefix} and {prefix}-")
+                            if event_name == "Hyderabad Marathon" and 2016 <= int(year) <= 2021:
+                                # For Hyderabad Marathon, only add without hyphen
+                                string_patterns.add(prefix)
+                                self.logger.info(f"Found bib prefix pattern for Hyderabad Marathon: {prefix}")
+                            else:
+                                # For other events, add both with and without hyphen
+                                string_patterns.add(prefix)  # Add without hyphen
+                                string_patterns.add(f"{prefix}-")  # Add with hyphen
+                                self.logger.info(f"Found bib prefix patterns: {prefix} and {prefix}-")
 
                         self.processed_bibs.add(bib)
                         self.logger.info(f"Processing top result bib: {bib}")
@@ -191,7 +211,7 @@ class IfinishSpider(scrapy.Spider):
                             "bib": bib,
                             "eventId": event_id
                         }
-
+                        
                         yield scrapy.Request(
                             url=bib_url,
                             method='POST',
@@ -223,9 +243,15 @@ class IfinishSpider(scrapy.Spider):
                         prefix_match = re.match(r'^([A-Z])(?:-)?', str(bib))
                         if prefix_match and prefix_match.group(1):
                             prefix = prefix_match.group(1)
-                            string_patterns.add(prefix)  # Add without hyphen
-                            string_patterns.add(f"{prefix}-")  # Add with hyphen
-                            self.logger.info(f"Found bib prefix patterns: {prefix} and {prefix}-")
+                            if event_name == "Hyderabad Marathon" and 2016 <= int(year) <= 2021:
+                                # For Hyderabad Marathon, only add without hyphen
+                                string_patterns.add(prefix)
+                                self.logger.info(f"Found bib prefix pattern for Hyderabad Marathon: {prefix}")
+                            else:
+                                # For other events, add both with and without hyphen
+                                string_patterns.add(prefix)  # Add without hyphen
+                                string_patterns.add(f"{prefix}-")  # Add with hyphen
+                                self.logger.info(f"Found bib prefix patterns: {prefix} and {prefix}-")
 
                         self.processed_bibs.add(bib)
                         self.logger.info(f"Processing sub-category bib: {bib}")
@@ -243,7 +269,8 @@ class IfinishSpider(scrapy.Spider):
                             "bib": bib,
                             "eventId": event_id
                         }
-
+                       
+                        
                         yield scrapy.Request(
                             url=bib_url,
                             method='POST',
@@ -263,71 +290,121 @@ class IfinishSpider(scrapy.Spider):
             # After processing all top results, start bib search
             self.logger.info("Starting bib search requests")
             
-            # First do normal numeric search
-            for bib_prefix in range(100, 1001):
-                bib_search_url = "https://api2.ifinish.in/api/searchTimingBibNumber"
-                headers = {
-                    'accept': 'application/json, text/plain, */*',
-                    'accept-language': 'en-US,en;q=0.9',
-                    'apikey': 'ca5ae6f17b5ddb305ad32be93e50e7345ba8f462a794a99f9656862fdcf5702b',
-                    'content-type': 'application/json',
-                    'origin': 'https://ifinish.in',
-                    'referer': 'https://ifinish.in/',
-                    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0'
-                }
-                payload = {
-                    "bib": str(bib_prefix),
-                    "eventId": event_id
-                }
+            # Special handling for Hyderabad Marathon
+            if "Hyderabad Marathon" in event_name and 2016 <= int(year) <= 2021:
+                self.logger.info("Using special pattern for Hyderabad Marathon")
 
-                yield scrapy.Request(
-                    url=bib_search_url,
-                    method='POST',
-                    headers=headers,
-                    body=json.dumps(payload),
-                    callback=self.parse_bib_search,
-                    meta={
-                        'event_id': event_id,
-                        'event_name': event_name,
-                        'year': year
-                    },
-                    dont_filter=True
-                )
+                # If we found any prefix patterns, do additional searches with each pattern
+                if string_patterns:
+                    #self.logger.info(f"Starting bib search requests with patterns: {string_patterns}")
+                    # Filter patterns for Hyderabad Marathon
+                    if event_name == "Hyderabad Marathon" and 2016 <= int(year) <= 2021:
+                        # Remove any patterns containing hyphens
+                        string_patterns = {pattern for pattern in string_patterns if '-' not in pattern}
+                        self.logger.info(f"Filtered patterns for Hyderabad Marathon: {string_patterns}")
+                    
+                    for pattern in string_patterns:
+                        self.logger.info(f"Starting bib search requests with pattern: {pattern}")
+                        # Special range for Hyderabad Marathon: {}00 to {}30
+                        for bib_suffix in range(0, 100):  # 00 to 30
+                            bib_search_url = "https://api2.ifinish.in/api/searchTimingBibNumber"
+                            headers = {
+                                'accept': 'application/json, text/plain, */*',
+                                'accept-language': 'en-US,en;q=0.9',
+                                'apikey': 'ca5ae6f17b5ddb305ad32be93e50e7345ba8f462a794a99f9656862fdcf5702b',
+                                'content-type': 'application/json',
+                                'origin': 'https://ifinish.in',
+                                'referer': 'https://ifinish.in/',
+                                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0'
+                            }
+                            # Format the bib number with leading zeros
+                            formatted_suffix = f"{bib_suffix:02d}"
+                            payload = {
+                                "bib": f"{pattern}{formatted_suffix}",
+                                "eventId": event_id
+                            }
+                            
+                            yield scrapy.Request(
+                                url=bib_search_url,
+                                method='POST',
+                                headers=headers,
+                                body=json.dumps(payload),
+                                callback=self.parse_bib_search,
+                                meta={
+                                    'event_id': event_id,
+                                    'event_name': event_name,
+                                    'year': year
+                                },
+                                dont_filter=True
+                            )
+            
+                # Original pattern for other events
+                # First do normal numeric search
+            else:
+                for bib_prefix in range(100, 1001):
+                    bib_search_url = "https://api2.ifinish.in/api/searchTimingBibNumber"
+                    headers = {
+                        'accept': 'application/json, text/plain, */*',
+                        'accept-language': 'en-US,en;q=0.9',
+                        'apikey': 'ca5ae6f17b5ddb305ad32be93e50e7345ba8f462a794a99f9656862fdcf5702b',
+                        'content-type': 'application/json',
+                        'origin': 'https://ifinish.in',
+                        'referer': 'https://ifinish.in/',
+                        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0'
+                    }
+                    payload = {
+                        "bib": str(bib_prefix),
+                        "eventId": event_id
+                    }
 
-            # If we found any prefix patterns, do additional searches with each pattern
-            if string_patterns:
-                self.logger.info(f"Starting bib search requests with patterns: {string_patterns}")
-                for pattern in string_patterns:
-                    self.logger.info(f"Starting bib search requests with pattern: {pattern}")
-                    for bib_prefix in range(100, 1001):
-                        bib_search_url = "https://api2.ifinish.in/api/searchTimingBibNumber"
-                        headers = {
-                            'accept': 'application/json, text/plain, */*',
-                            'accept-language': 'en-US,en;q=0.9',
-                            'apikey': 'ca5ae6f17b5ddb305ad32be93e50e7345ba8f462a794a99f9656862fdcf5702b',
-                            'content-type': 'application/json',
-                            'origin': 'https://ifinish.in',
-                            'referer': 'https://ifinish.in/',
-                            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0'
-                        }
-                        payload = {
-                            "bib": f"{pattern}{bib_prefix}",
-                            "eventId": event_id
-                        }
+                    yield scrapy.Request(
+                        url=bib_search_url,
+                        method='POST',
+                        headers=headers,
+                        body=json.dumps(payload),
+                        callback=self.parse_bib_search,
+                        meta={
+                            'event_id': event_id,
+                            'event_name': event_name,
+                            'year': year
+                        },
+                        dont_filter=True
+                    )
 
-                        yield scrapy.Request(
-                            url=bib_search_url,
-                            method='POST',
-                            headers=headers,
-                            body=json.dumps(payload),
-                            callback=self.parse_bib_search,
-                            meta={
-                                'event_id': event_id,
-                                'event_name': event_name,
-                                'year': year
-                            },
-                            dont_filter=True
-                        )
+                # If we found any prefix patterns, do additional searches with each pattern
+                if string_patterns:
+                    self.logger.info(f"Starting bib search requests with patterns: {string_patterns}")
+                    for pattern in string_patterns:
+                        self.logger.info(f"Starting bib search requests with pattern: {pattern}")
+                        for bib_prefix in range(100, 1001):
+                            bib_search_url = "https://api2.ifinish.in/api/searchTimingBibNumber"
+                            headers = {
+                                'accept': 'application/json, text/plain, */*',
+                                'accept-language': 'en-US,en;q=0.9',
+                                'apikey': 'ca5ae6f17b5ddb305ad32be93e50e7345ba8f462a794a99f9656862fdcf5702b',
+                                'content-type': 'application/json',
+                                'origin': 'https://ifinish.in',
+                                'referer': 'https://ifinish.in/',
+                                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0'
+                            }
+                            payload = {
+                                "bib": f"{pattern}{bib_prefix}",
+                                "eventId": event_id
+                            }
+
+                            yield scrapy.Request(
+                                url=bib_search_url,
+                                method='POST',
+                                headers=headers,
+                                body=json.dumps(payload),
+                                callback=self.parse_bib_search,
+                                meta={
+                                    'event_id': event_id,
+                                    'event_name': event_name,
+                                    'year': year
+                                },
+                                dont_filter=True
+                            )
 
         except Exception as e:
             self.logger.error(f"Error in parse_top_results: {str(e)}")
@@ -366,7 +443,7 @@ class IfinishSpider(scrapy.Spider):
                 "bib": bib,
                 "eventId": event_id
             }
-
+            
             yield scrapy.Request(
                 url=bib_url,
                 method='POST',
@@ -388,6 +465,7 @@ class IfinishSpider(scrapy.Spider):
             data = json.loads(response.text)
             year = response.meta['year']
             bib = response.meta['bib']
+         
             self.logger.info(f"Processing bib result for {bib}")
             
             if not data.get('status'):
@@ -396,54 +474,60 @@ class IfinishSpider(scrapy.Spider):
 
             result_data = data.get('data', {})
             
-            # Extract rank information
-            rank_parts = str(result_data.get('Rank', '')).split('/')
-            overall_rank = rank_parts[0].strip() if len(rank_parts) > 0 else ''
-            total_athletes = rank_parts[1].strip() if len(rank_parts) > 1 else ''
+            # Extract results info
+            results_info = result_data.get('results_info', {})
+            timing_info = result_data.get('timing_info', {})
+            rank_info = result_data.get('rank_info', {})
+            
+            # Extract basic information
+            bib = results_info.get('bib_number', bib)
+            distance_category = results_info.get('event', response.meta.get('category_name', ''))
+            runner_name = results_info.get('name', '')
+            gender = results_info.get('gender', '')
+            age_category = results_info.get('category', '')
+            
+            # Extract timing information
+            net_time = timing_info.get('net_time', '')
+            gun_time = timing_info.get('gross_time', '')
+            
+            # Extract ranking information
+            rank_overall = rank_info.get('rank', '')
+            rank_gender = rank_info.get('gender_rank', '')
+            rank_age_category = rank_info.get('category_rank', '')
+            
+            # Format race date
+            race_date = year
 
-            category_rank_parts = str(result_data.get('Category Rank', '')).split('/')
-            category_rank = category_rank_parts[0].strip() if len(category_rank_parts) > 0 else ''
-            category_total = category_rank_parts[1].strip() if len(category_rank_parts) > 1 else ''
-
-            gender_rank_parts = str(result_data.get('Gender Rank', '')).split('/')
-            gender_rank = gender_rank_parts[0].strip() if len(gender_rank_parts) > 0 else ''
-            gender_total = gender_rank_parts[1].strip() if len(gender_rank_parts) > 1 else ''
-
-            # Extract time information
-            net_time = result_data.get('Net Time', '').split(',')[0] if result_data.get('Net Time') else ''
-            gross_time = result_data.get('Gross Time', '')
-
-            result = {
+            yield {
                 'summary': {
                     'event_id': response.meta['event_id'],
                     'race_name': response.meta['event_name'],
-                    'race_date': year,
+                    'race_date': race_date,
                     'master_event_id': response.meta['event_id']
                 },
                 'bib_number': bib,
-                'distance_category': response.meta['category_name'],
-                'runner_name': result_data.get('Name', ''),
-                'gender': result_data.get('Gender', ''),
-                'age_category': result_data.get('Category', ''),
+                'distance_category': distance_category,
+                'runner_name': runner_name,
+                'gender': gender,
+                'age_category': age_category,
                 'finish_time_net': net_time,
-                'finish_time_gun': gross_time,
+                'finish_time_gun': gun_time,
                 'chip_pace': '',
-                'rank_overall': f"{overall_rank}/{total_athletes}",
-                'rank_gender': f"{gender_rank}/{gender_total}",
-                'rank_age_category': f"{category_rank}/{category_total}",
+                'rank_overall': rank_overall,
+                'rank_gender': rank_gender,
+                'rank_age_category': rank_age_category,
                 'jsonb': {
                     'bib': bib,
                     'nationality': '',
                     'age': '',
-                    'race_category': response.meta['category_name'],
-                    'original_name': result_data.get('Name', ''),
-                    'overall_rank': overall_rank,
-                    'gender': result_data.get('Gender', ''),
+                    'race_category': distance_category,
+                    'original_name': runner_name,
+                    'overall_rank': rank_overall.split('/')[0] if rank_overall else '',
+                    'gender': gender,
                     'net_time': net_time,
-                    'gross_time': gross_time
+                    'gross_time': gun_time
                 }
             }
-            yield result
 
         except Exception as e:
             self.logger.error(f"Error in parse_bib_result for bib {response.meta['bib']}: {str(e)}")
