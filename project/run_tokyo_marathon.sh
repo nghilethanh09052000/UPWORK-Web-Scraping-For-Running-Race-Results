@@ -19,3 +19,4 @@ scrapy crawl tokyo_marathon \
 
 echo "Tokyo Marathon Spider completed!"
 echo "Results saved in data_tokyo_marathon/ directory"
+

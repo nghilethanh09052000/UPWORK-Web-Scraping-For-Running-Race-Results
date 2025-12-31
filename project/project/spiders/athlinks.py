@@ -12,7 +12,7 @@ class AthlinksMasterSpider(scrapy.Spider):
         'DOWNLOAD_DELAY': 0,
         'RETRY_ENABLED': True,
         'LOG_FILE': f"logs/athlinks.log",
-        'CONCURRENT_REQUESTS': 100,
+        #'CONCURRENT_REQUESTS': 100,
         #'AUTOTHROTTLE_ENABLED' : True,
         ##'AUTOTHROTTLE_START_DELAY' : 5,
         #'AUTOTHROTTLE_MAX_DELAY' : 60,
@@ -140,6 +140,18 @@ class AthlinksMasterSpider(scrapy.Spider):
             if master_id == '34504' and race_date.year not in [2024]: # Athen Marathon
                 print(f"Master Id {master_id} ... Year {race_date.year} must be on the list 2016, 2017, 2018, 2020, 2021, 2022, 2023, 2024 , skipping...")
                 continue
+
+            # New events filter: 2015-2025
+            new_event_ids = ['6172', '20181', '35077', '8432', '11270', '156909', '7249', '3321', 
+                           '9036', '12410', '19554', '99943', '137505', '375695', '1403', '122368', 
+                           '12354', '1264', '19454', '4782', '34467', '6620', '2436', '18749', 
+                           '389503', '7884', '20447', '3403', '4987', '3294', '28337', '34956', 
+                           '35340', '36310', '20146', '23987', '154412', '127196', '8966']
+            
+            if master_id in new_event_ids:
+                if race_date.year < 2015 or race_date.year > 2025:
+                    print(f"Master Id {master_id} ... Year {race_date.year} not in range 2015-2025, skipping...")
+                    continue
 
             if race_date.year < 2005:
                 continue

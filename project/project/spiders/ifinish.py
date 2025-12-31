@@ -7,8 +7,8 @@ import re
 class IfinishSpider(scrapy.Spider):
     name = 'ifinish'
     custom_settings = {
-        'CONCURRENT_REQUESTS': 50,
-        'DOWNLOAD_DELAY': 0,
+        'CONCURRENT_REQUESTS': 10,
+        'DOWNLOAD_DELAY': 0.5,
         #'AUTOTHROTTLE_ENABLED' : True,
         # 'AUTOTHROTTLE_START_DELAY' : 5,
         # 'AUTOTHROTTLE_MAX_DELAY' : 60,
@@ -341,7 +341,7 @@ class IfinishSpider(scrapy.Spider):
                 # Original pattern for other events
                 # First do normal numeric search
             else:
-                for bib_prefix in range(100, 1001):
+                for bib_prefix in range(100, 3001):
                     bib_search_url = "https://api2.ifinish.in/api/searchTimingBibNumber"
                     headers = {
                         'accept': 'application/json, text/plain, */*',
@@ -376,7 +376,7 @@ class IfinishSpider(scrapy.Spider):
                     self.logger.info(f"Starting bib search requests with patterns: {string_patterns}")
                     for pattern in string_patterns:
                         self.logger.info(f"Starting bib search requests with pattern: {pattern}")
-                        for bib_prefix in range(100, 1001):
+                        for bib_prefix in range(100, 3001):
                             bib_search_url = "https://api2.ifinish.in/api/searchTimingBibNumber"
                             headers = {
                                 'accept': 'application/json, text/plain, */*',
@@ -423,7 +423,9 @@ class IfinishSpider(scrapy.Spider):
 
         # Process each result from the bib search
         for result in data.get('data', []):
+           
             bib = result.get('bib', '')
+                         
             if not bib or bib in self.processed_bibs:
                 continue
 

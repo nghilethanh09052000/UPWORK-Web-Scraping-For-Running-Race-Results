@@ -104,6 +104,9 @@ run_all_events() {
 
     # SBI Patna Marathon Reloaded (2024)
     run_event "SBI Patna Marathon Reloaded" 2024 1 100001
+
+    # Vedanta Delhi Half Marathon (2025)
+    run_event "Vedanta Delhi Half Marathon" 2025 1 100001
 }
 
 # Main script
@@ -217,8 +220,12 @@ else
             # SBI Patna Marathon Reloaded
             run_event "SBI Patna Marathon Reloaded" 2024 1 100001
             ;;
+        "vedanta")
+            # Vedanta Delhi Half Marathon
+            run_event "Vedanta Delhi Half Marathon" 2025 1 100001
+            ;;
         *)
-            echo "Invalid event name. Use: ladakh, mumbai, tcs, jbg, vm, bm, satara, hiranandani, apla, rotary, ekal, bajaj, disha, indian_navy, chandigarh, vasai, kashmir, or sbi_patna"
+            echo "Invalid event name. Use: ladakh, mumbai, tcs, jbg, vm, bm, satara, hiranandani, apla, rotary, ekal, bajaj, disha, indian_navy, chandigarh, vasai, kashmir, sbi_patna, or vedanta"
             exit 1
             ;;
     esac
