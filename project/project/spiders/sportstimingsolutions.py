@@ -8,8 +8,8 @@ class SportsTimingSolutionsSpider(scrapy.Spider):
     name = 'sportstimingsolutions'
     custom_settings = {
         'AUTOTHROTTLE_ENABLED': False,
-        #'CONCURRENT_REQUESTS': 200,
-        'DOWNLOAD_DELAY': 0.5,
+        'CONCURRENT_REQUESTS': 10,
+        'DOWNLOAD_DELAY': 1.5,
         'RETRY_ENABLED': True,
         'LOG_FILE': f"logs/sportstimingsolutions.log",
         'USER_AGENT': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0",
