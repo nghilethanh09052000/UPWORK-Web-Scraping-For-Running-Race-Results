@@ -6,7 +6,7 @@ import traceback
 
 def process_data_directory():
     # Get the data directory
-    data_dir = Path(__file__).parent / "data_20251231"
+    data_dir = Path(__file__).parent / "data_20260104"
     if not data_dir.exists():
         print(f"Error: {data_dir} not found")
         return
